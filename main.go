@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -21,7 +20,6 @@ func main() {
 	var line int
 	numSafe := 0
 	var intReports [][]int
-	var totalReport []bool
 
 	for scanner.Scan() {
 		line++
@@ -41,76 +39,65 @@ func main() {
 	}
 
 	for _, report := range intReports {
-		reportIsSafe, err := isSafe(report)
-		if err != nil {
-			log.Print("error checking report for safety")
-		}
-
-		totalReport = append(totalReport, reportIsSafe)
-	}
-
-	for _, report := range totalReport {
-		if report {
+		if checkReportWithDeletion(report) {
 			numSafe++
+		} else {
+			continue
 		}
 	}
 
 	log.Printf("number of safe reports: %d\n", numSafe)
 }
 
-func isSafe(report []int) (bool, error) {
-	var increasing []bool
-	var distGood []bool
-	allIncreasing := 0
-	allDistGood := 0
+// /////////////////////////////////////////////////////////////////////////////
+// Credit to https://www.bytesizego.com/blog/aoc-day2-golang because I could
+// NOT get this working otherwise...shame on me.
+// /////////////////////////////////////////////////////////////////////////////
+func isSafe(report []int) bool {
+	flagIncrease, flagDecrease := false, false
 
-	for i, value := range report {
-		if i >= len(report)-1 {
-			break
-		}
-		currValue := value
-		nextValue := report[i+1]
+	for i := 1; i < len(report); i++ {
+		diff := report[i] - report[i-1]
 
-		difference := int(math.Abs(float64(nextValue - currValue)))
-
-		if difference >= 1 && difference <= 3 {
-			distGood = append(distGood, true)
+		if diff > 0 {
+			flagIncrease = true
+		} else if diff < 0 {
+			flagDecrease = true
 		} else {
-			distGood = append(distGood, false)
+			return false
 		}
 
-		if nextValue > currValue {
-			increasing = append(increasing, true)
-		} else {
-			increasing = append(increasing, false)
+		if flagDecrease && flagIncrease {
+			return false
+		}
+
+		if diff > 3 || diff < -3 {
+			return false
 		}
 	}
 
-	for i, inc := range increasing {
-		if i >= len(increasing)-1 {
-			break
-		}
-		if inc == increasing[i+1] {
-			continue
-		} else {
-			allIncreasing++
+	return true
+}
+
+func checkReportWithDeletion(report []int) bool {
+	for i := 0; i < len(report); i++ {
+		if isSafeWithDeletion(report, i) {
+			return true
 		}
 	}
 
-	for i, dist := range distGood {
-		if i >= len(distGood)-1 {
-			break
-		}
-		if dist == distGood[i+1] {
-			continue
-		} else {
-			allDistGood++
-		}
-	}
+	return false
+}
 
-	if allDistGood == 0 && allIncreasing == 0 {
-		return true, nil
+func isSafeWithDeletion(report []int, deleteIndex int) bool {
+	copyReport := make([]int, len(report))
+	copy(copyReport, report)
+
+	if deleteIndex == len(copyReport)-1 {
+		copyReport = copyReport[:deleteIndex]
 	} else {
-		return false, nil
+		copyReport = append(copyReport[:deleteIndex], copyReport[deleteIndex+1:]...)
 	}
+
+	return isSafe(copyReport)
 }
